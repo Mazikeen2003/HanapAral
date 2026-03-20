@@ -1,4 +1,4 @@
-package com.example.hanaparal
+package com.example.hanaparal.ui.main
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
             HanapAralTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Greeting(
-                        name = "Android",
+                        name = "HanapAral",
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -33,15 +33,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     Text(
-        text = "Hello $name!",
+        text = "Welcome to $name!",
         modifier = modifier
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    HanapAralTheme {
-        Greeting("Android")
-    }
 }
