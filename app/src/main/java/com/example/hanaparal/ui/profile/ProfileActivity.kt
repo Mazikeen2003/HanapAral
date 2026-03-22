@@ -14,6 +14,16 @@ class ProfileActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
 
+    override fun onStart() {
+        super.onStart()
+
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user == null) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profile)
@@ -31,6 +41,7 @@ class ProfileActivity : AppCompatActivity() {
         btnEditProfile.setOnClickListener {
             val intent = Intent(this, EditProfileActivity::class.java)
             startActivity(intent)
+
         }
 
         // Display user info
