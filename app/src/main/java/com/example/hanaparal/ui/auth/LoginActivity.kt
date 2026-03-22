@@ -1,6 +1,7 @@
 package com.example.hanaparal.ui.auth
 
 import android.app.Activity
+import com.example.hanaparal.ui.profile.ProfileActivity
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
@@ -32,6 +33,17 @@ class LoginActivity : AppCompatActivity() {
         signIn()
     }
 
+    override fun onStart() {
+        super.onStart()
+
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user != null) {
+            startActivity(Intent(this, ProfileActivity::class.java))
+            finish()
+        }
+    }
+
+
     private fun signIn() {
         val signInIntent = googleSignInClient.signInIntent
         startActivityForResult(signInIntent, RC_SIGN_IN)
@@ -53,15 +65,19 @@ class LoginActivity : AppCompatActivity() {
 
     private fun firebaseAuthWithGoogle(idToken: String) {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
+        val auth = FirebaseAuth.getInstance()
 
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    // SUCCESS LOGIN
-                    val user = auth.currentUser
-                    println("Logged in: ${user?.email}")
+
+                    // ✅ GO TO PROFILE
+                    val intent = Intent(this, ProfileActivity::class.java)
+                    startActivity(intent)
+                    finish()
+
                 } else {
-                    println("Login failed")
+                    // handle error
                 }
             }
     }
