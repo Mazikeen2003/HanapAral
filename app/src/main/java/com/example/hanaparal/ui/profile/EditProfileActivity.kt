@@ -1,6 +1,7 @@
 package com.example.hanaparal.ui.profile
 
 import android.os.Bundle
+import com.google.firebase.firestore.FirebaseFirestore
 import android.widget.Button
 import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
@@ -18,6 +19,8 @@ class EditProfileActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
 
+
+
         val etName = findViewById<EditText>(R.id.etName)
         val btnSave = findViewById<Button>(R.id.btnSave)
 
@@ -31,6 +34,22 @@ class EditProfileActivity : AppCompatActivity() {
             val profileUpdates = UserProfileChangeRequest.Builder()
                 .setDisplayName(newName)
                 .build()
+
+            val db = FirebaseFirestore.getInstance()
+            val user = auth.currentUser
+            val userId = user?.uid
+
+            val userMap = hashMapOf(
+                "name" to newName,
+                "email" to user?.email,
+                "course" to "BSIT" // you can change later
+            )
+
+            if (userId != null) {
+                db.collection("users")
+                    .document(userId)
+                    .set(userMap)
+            }
 
             user?.updateProfile(profileUpdates)
         }
