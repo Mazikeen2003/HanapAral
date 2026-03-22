@@ -1,5 +1,6 @@
 package com.example.hanaparal.ui.profile
 
+import com.example.hanaparal.ui.profile.EditProfileActivity
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
@@ -24,6 +25,13 @@ class ProfileActivity : AppCompatActivity() {
         val tvName = findViewById<TextView>(R.id.tvName)
         val tvEmail = findViewById<TextView>(R.id.tvEmail)
         val btnLogout = findViewById<Button>(R.id.btnLogout)
+
+        val btnEditProfile = findViewById<Button>(R.id.btnEditProfile)
+
+        btnEditProfile.setOnClickListener {
+            val intent = Intent(this, EditProfileActivity::class.java)
+            startActivity(intent)
+        }
 
         // Display user info
         tvName.text = user?.displayName ?: "No Name"
