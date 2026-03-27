@@ -23,7 +23,6 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Note: For now, it just triggers the sign-in directly
         
         auth = FirebaseAuth.getInstance()
 
@@ -33,7 +32,11 @@ class LoginActivity : AppCompatActivity() {
             .build()
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
-        signIn()
+
+        // Clear session and trigger sign in
+        googleSignInClient.signOut().addOnCompleteListener {
+            signIn()
+        }
     }
 
     private fun signIn() {
@@ -48,11 +51,10 @@ class LoginActivity : AppCompatActivity() {
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             try {
                 val account = task.getResult(ApiException::class.java)!!
-                Log.d(TAG, "Google Sign-In successful, authenticating with Firebase...")
                 firebaseAuthWithGoogle(account.idToken!!)
             } catch (e: ApiException) {
                 Log.e(TAG, "Google sign in failed. Code: ${e.statusCode}")
-                Toast.makeText(this, "Google sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Google sign in failed", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -62,7 +64,6 @@ class LoginActivity : AppCompatActivity() {
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    Log.d(TAG, "Firebase Authentication successful!")
                     startActivity(Intent(this, ProfileActivity::class.java))
                     finish()
                 } else {
