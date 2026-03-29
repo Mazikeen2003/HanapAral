@@ -12,7 +12,36 @@
           "package_name": "com.example.hanaparal"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "731492503582-5jh0jpbbp6dhq7klg26f8s81b2rmanij.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.hanaparal",
+            "certificate_hash": "3fe900c64e2a9b24178d486b2cbbb3c7487bd405"
+          }
+        },
+        {
+          "client_id": "731492503582-f65sjhit52f41rjl9in0r7qcb7s71nao.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.hanaparal",
+            "certificate_hash": "d6f3caa86d5c23c01eb2c411d153191ade91f912"
+          }
+        },
+        {
+          "client_id": "731492503582-jv4nbcohea6dbt2jop6ncfj2o091t87a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.hanaparal",
+            "certificate_hash": "20cde397220371ec81ee58d78e76009d547537be"
+          }
+        },
+        {
+          "client_id": "731492503582-fmt98k8tvg32bpnadei1ru4fkcjtc6cj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyALxmueY9RJAB9l6mERRn7v6OY-XkFv8as"
@@ -20,7 +49,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "731492503582-fmt98k8tvg32bpnadei1ru4fkcjtc6cj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
