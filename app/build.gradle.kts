@@ -62,9 +62,21 @@ dependencies {
 
     // Firebase dependencies
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.messaging)
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-config")
+    implementation("com.google.firebase:firebase-common")
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
+
+    // Biometric authentication
+    implementation("androidx.biometric:biometric:1.1.0")
+
+    // Image loading
+    implementation("io.coil-kt:coil-compose:2.7.0")
+    
+    // ViewModel Compose
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     
     // Google Sign In
     implementation("com.google.android.gms:play-services-auth:21.3.0")
