@@ -1,128 +1,109 @@
 package com.example.hanaparal.ui.groups
 
-import android.os.Bundle
-import android.widget.Toast
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.hanaparal.data.remote.FirestoreSource
-import com.example.hanaparal.ui.theme.HanapAralTheme
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hanaparal.data.model.GroupMember
 
-class GroupDetailsActivity : ComponentActivity() {
-    private val firestoreSource = FirestoreSource()
+@Composable
+fun GroupDetailsActivity(
+    groupId: String,
+    maxMembers: Int = 10,
+    viewModel: GroupViewModel = viewModel()
+) {
+    val members by viewModel.members.collectAsState()
+    val loading by viewModel.loading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val success by viewModel.success.collectAsState()
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        val groupId = intent.getStringExtra("groupId") ?: return finish()
+    LaunchedEffect(Unit) {
+        viewModel.loadMembers(groupId)
+    }
 
-        setContent {
-            HanapAralTheme {
-                var groupData by remember { mutableStateOf<Map<String, Any>?>(null) }
-                var isLoading by remember { mutableStateOf(true) }
-                val uid = FirebaseAuth.getInstance().currentUser?.uid
-                
-                // Observe global settings for member limit
-                val settings by firestoreSource.observeGlobalSettings().collectAsState(initial = emptyMap())
-                val maxMembers = (settings["max_members_per_group"] as? Long) ?: 10L
+    LaunchedEffect(success) {
+        if (success != null) {
+            viewModel.loadMembers(groupId)
+            viewModel.clearMessages()
+        }
+    }
 
-                LaunchedEffect(Unit) {
-                    FirebaseFirestore.getInstance().collection("groups").document(groupId)
-                        .addSnapshotListener { snapshot, _ ->
-                            isLoading = false
-                            groupData = snapshot?.data
-                        }
-                }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Group Details",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
-                Scaffold(
-                    topBar = {
-                        TopAppBar(
-                            title = { Text("Group Details") },
-                            navigationIcon = {
-                                IconButton(onClick = { finish() }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                                }
-                            },
-                            actions = {
-                                // Delete button for the owner
-                                val adminId = groupData?.get("adminId") as? String
-                                if (adminId == uid) {
-                                    IconButton(onClick = {
-                                        firestoreSource.deleteGroup(groupId) { success ->
-                                            if (success) {
-                                                Toast.makeText(this@GroupDetailsActivity, "Group Deleted", Toast.LENGTH_SHORT).show()
-                                                finish()
-                                            }
-                                        }
-                                    }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete Group", tint = MaterialTheme.colorScheme.error)
-                                    }
-                                }
-                            }
-                        )
-                    }
-                ) { innerPadding ->
-                    if (isLoading) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    } else {
-                        groupData?.let { g ->
-                            val members = g["members"] as? List<*> ?: emptyList<Any>()
-                            val isMember = members.contains(uid)
-                            val name = g["name"] as? String ?: ""
-                            val description = g["description"] as? String ?: ""
+        Text(
+            text = "Members",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
-                            Column(modifier = Modifier.padding(innerPadding).padding(24.dp)) {
-                                Text(text = name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(text = description, style = MaterialTheme.typography.bodyLarge)
-                                Spacer(modifier = Modifier.height(24.dp))
-                                Text(text = "Members: ${members.size} / $maxMembers", style = MaterialTheme.typography.titleMedium)
-                                
-                                Spacer(modifier = Modifier.weight(1f))
+        error?.let {
+            Text(text = it, color = MaterialTheme.colorScheme.error)
+        }
 
-                                val canJoin = !isMember && members.size < maxMembers
+        success?.let {
+            Text(text = it, color = MaterialTheme.colorScheme.primary)
+        }
 
-                                Button(
-                                    onClick = {
-                                        if (canJoin && uid != null) {
-                                            FirebaseFirestore.getInstance().collection("groups").document(groupId)
-                                                .update("members", FieldValue.arrayUnion(uid))
-                                                .addOnSuccessListener {
-                                                    Toast.makeText(this@GroupDetailsActivity, "Joined Group!", Toast.LENGTH_SHORT).show()
-                                                }
-                                        }
-                                    },
-                                    enabled = canJoin,
-                                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        when {
-                                            isMember -> "Already a Member"
-                                            members.size >= maxMembers -> "Group is Full"
-                                            else -> "Join Study Group"
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
+        if (loading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(members) { member ->
+                    MemberCard(member = member)
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = { viewModel.joinGroup(groupId, maxMembers) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Join Group")
+        }
+    }
+}
+
+@Composable
+fun MemberCard(member: GroupMember) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(text = member.name, style = MaterialTheme.typography.titleSmall)
+                Text(text = member.email, style = MaterialTheme.typography.bodySmall)
+            }
+            Text(
+                text = if (member.role == "admin") "Admin" else "Member",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

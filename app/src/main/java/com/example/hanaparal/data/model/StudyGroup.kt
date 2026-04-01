@@ -1,9 +1,12 @@
 package com.example.hanaparal.data.model
 
 data class StudyGroup(
-    val id: String = "",
-    val name: String = "",
-    val description: String = "",
-    val creatorId: String = "",
-    val members: List<String> = emptyList()
+    val groupId: String = "",
+    val title: String = "",
+    val subject: String = "",
+    val adminId: String = "",
+    val adminName: String = "",
+    val maxMembers: Int = 10,
+    val createdAt: Long = 0L,
+    val announcementHeader: String = ""
 )

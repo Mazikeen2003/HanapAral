@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">HanapAral</string>
     <string name="default_web_client_id">731492503582-fmt98k8tvg32bpnadei1ru4fkcjtc6cj.apps.googleusercontent.com</string>
+    <string name="hint_enter_name">Enter new name</string>
+    <string name="save">Save</string>
 </resources>
+

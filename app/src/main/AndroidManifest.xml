@@ -17,14 +17,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.HanapAral">
 
-        <service
-            android:name=".data.remote.MyFirebaseMessagingService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
-
         <activity
             android:name=".ui.main.SplashActivity"
             android:exported="true"
@@ -75,6 +67,30 @@
             android:exported="false"
             android:label="Admin Panel"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
+        <activity
+            android:name=".ui.profile.ProfileActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.profile.EditProfileActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.groups.CreateGroupActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.groups.GroupListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.groups.GroupDetailsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.admin.AdminPanelActivity"
+            android:exported="false" />
 
     </application>
 

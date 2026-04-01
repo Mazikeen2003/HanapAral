@@ -30,14 +30,6 @@
           }
         },
         {
-          "client_id": "731492503582-jv4nbcohea6dbt2jop6ncfj2o091t87a.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.hanaparal",
-            "certificate_hash": "20cde397220371ec81ee58d78e76009d547537be"
-          }
-        },
-        {
           "client_id": "731492503582-fmt98k8tvg32bpnadei1ru4fkcjtc6cj.apps.googleusercontent.com",
           "client_type": 3
         }
