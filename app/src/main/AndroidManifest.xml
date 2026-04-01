@@ -68,29 +68,15 @@
             android:label="Admin Panel"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
 
-        <activity
-            android:name=".ui.profile.ProfileActivity"
-            android:exported="false" />
+        <service
+            android:name=".ui.notifications.MyFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
 
-        <activity
-            android:name=".ui.profile.EditProfileActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.groups.CreateGroupActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.groups.GroupListActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.groups.GroupDetailsActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.admin.AdminPanelActivity"
-            android:exported="false" />
+        <receiver android:name=".ui.notifications.ReminderReceiver" />
 
     </application>
 

@@ -3,6 +3,7 @@ package com.example.hanaparal.data.repository
 import com.example.hanaparal.data.model.GroupMember
 import com.example.hanaparal.data.model.StudyGroup
 import com.example.hanaparal.data.remote.FirestoreSource
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -10,11 +11,15 @@ class GroupRepository(
     private val firestoreSource: FirestoreSource = FirestoreSource()
 ) {
     private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()
 
     suspend fun createGroup(title: String, subject: String, maxMembers: Int): Result<Unit> {
         return try {
             val user = auth.currentUser ?: return Result.failure(Exception("Not logged in"))
-            val groupId = FirebaseFirestore.getInstance().collection("groups").document().id
+            
+            // 1. Generate a new document reference to get a unique ID
+            val groupRef = db.collection("groups").document()
+            val groupId = groupRef.id
 
             val group = StudyGroup(
                 groupId = groupId,
@@ -23,19 +28,21 @@ class GroupRepository(
                 adminId = user.uid,
                 adminName = user.displayName ?: "Unknown",
                 maxMembers = maxMembers,
-                createdAt = System.currentTimeMillis()
+                createdAt = Timestamp.now()
             )
 
+            // 2. Write the main group document first
             firestoreSource.createGroup(group)
 
-            // Auto-assign creator as admin member
+            // 3. Then add the creator as the first member (admin)
             val adminMember = GroupMember(
                 uid = user.uid,
                 name = user.displayName ?: "Unknown",
                 email = user.email ?: "",
                 role = "admin",
-                joinedAt = System.currentTimeMillis()
+                joinedAt = Timestamp.now()
             )
+            
             firestoreSource.addMember(groupId, adminMember)
 
             Result.success(Unit)
@@ -57,11 +64,9 @@ class GroupRepository(
         return try {
             val user = auth.currentUser ?: return Result.failure(Exception("Not logged in"))
 
-            // Duplicate join prevention
             val alreadyJoined = firestoreSource.isMemberAlreadyJoined(groupId, user.uid)
             if (alreadyJoined) return Result.failure(Exception("You have already joined this group."))
 
-            // Max member restriction
             val currentCount = firestoreSource.getMemberCount(groupId)
             if (currentCount >= maxMembers) return Result.failure(Exception("Group is already full."))
 
@@ -70,7 +75,7 @@ class GroupRepository(
                 name = user.displayName ?: "Unknown",
                 email = user.email ?: "",
                 role = "member",
-                joinedAt = System.currentTimeMillis()
+                joinedAt = Timestamp.now()
             )
             firestoreSource.addMember(groupId, member)
 

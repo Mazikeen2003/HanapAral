@@ -131,7 +131,7 @@ fun AdminScreen(firestoreSource: FirestoreSource, modifier: Modifier = Modifier)
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Filled.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.width(16.dp))
                     Text(
                         "Superuser Mode Active",
@@ -158,7 +158,7 @@ fun AdminScreen(firestoreSource: FirestoreSource, modifier: Modifier = Modifier)
             AdminActionItem(
                 title = "User Access Control",
                 subtitle = "Manage superuser permissions",
-                icon = Icons.Default.People,
+                icon = Icons.Filled.People,
                 color = Color(0xFF2196F3),
                 onClick = { showUserDialog = true }
             )
@@ -176,7 +176,7 @@ fun AdminScreen(firestoreSource: FirestoreSource, modifier: Modifier = Modifier)
             AdminActionItem(
                 title = "Delete Existing Groups",
                 subtitle = "Cleanup unauthorized or inactive groups",
-                icon = Icons.Default.DeleteForever,
+                icon = Icons.Filled.DeleteForever,
                 color = MaterialTheme.colorScheme.error,
                 onClick = { showGroupsDialog = true }
             )

@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -33,18 +34,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.hanaparal.R
+import com.example.hanaparal.data.model.StudyGroup
 import com.example.hanaparal.data.remote.FcmSource
 import com.example.hanaparal.data.remote.FirestoreSource
 import com.example.hanaparal.data.remote.RemoteConfigSource
 import com.example.hanaparal.ui.admin.AdminPanelActivity
 import com.example.hanaparal.ui.auth.LoginActivity
 import com.example.hanaparal.ui.groups.CreateGroupActivity
+import com.example.hanaparal.ui.groups.GroupDetailsActivity
 import com.example.hanaparal.ui.groups.GroupListActivity
 import com.example.hanaparal.ui.profile.ProfileActivity
+import com.example.hanaparal.ui.profile.ProfileViewModel
 import com.example.hanaparal.ui.theme.HanapAralTheme
 import com.example.hanaparal.ui.theme.ThemeManager
 import com.example.hanaparal.utils.NotificationHelper
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
@@ -77,90 +85,130 @@ class MainActivity : ComponentActivity() {
             val currentDark = userDarkMode ?: systemDark
 
             HanapAralTheme {
+                val profileViewModel: ProfileViewModel = viewModel()
+                val profile by profileViewModel.profile.collectAsState()
+                
                 var announcement by remember { mutableStateOf("Welcome to HanapAral Hub") }
                 var groupCreationEnabled by remember { mutableStateOf(true) }
+                var maxMembers by remember { mutableStateOf(10) }
                 val user = FirebaseAuth.getInstance().currentUser
 
-                // Listen for global broadcasts to show as notifications (simulated push)
-                LaunchedEffect(Unit) {
-                    firestoreSource.observeLatestBroadcast().collect { broadcast ->
-                        val title = broadcast["title"] as? String ?: "Announcement"
-                        val body = broadcast["body"] as? String ?: ""
-                        if (body.isNotEmpty()) {
-                            notificationHelper.showNotification(NotificationHelper.CHANNEL_ADMIN_NOTICES, title, body)
-                        }
-                    }
-                }
+                // Navigation State
+                var currentScreen by remember { mutableStateOf("dashboard") }
+                var selectedGroup by remember { mutableStateOf<StudyGroup?>(null) }
 
                 LaunchedEffect(Unit) {
                     remoteConfigSource.fetchAndActivate {
                         announcement = remoteConfigSource.getAnnouncementHeader()
                         groupCreationEnabled = remoteConfigSource.isGroupCreationEnabled()
                     }
+                    
+                    firestoreSource.observeGlobalSettings().collect { settings ->
+                        (settings["group_creation_enabled"] as? Boolean)?.let { groupCreationEnabled = it }
+                        (settings["max_members_per_group"] as? Long)?.let { maxMembers = it.toInt() }
+                        (settings["announcement_header"] as? String)?.let { announcement = it }
+                    }
                 }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
-                        LargeTopAppBar(
+                        CenterAlignedTopAppBar(
                             title = {
-                                Column {
-                                    Text("HanapAral", fontWeight = FontWeight.ExtraBold)
-                                    Text(
-                                        "Hello, ${user?.displayName?.split(" ")?.firstOrNull() ?: "Student"}",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                Text(
+                                    when (currentScreen) {
+                                        "dashboard" -> "HanapAral"
+                                        "group_list" -> "Find Groups"
+                                        "create_group" -> "Create Group"
+                                        "group_details" -> "Group Details"
+                                        else -> "HanapAral"
+                                    },
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            },
+                            navigationIcon = {
+                                if (currentScreen != "dashboard") {
+                                    IconButton(onClick = { 
+                                        currentScreen = if (currentScreen == "group_details") "group_list" else "dashboard" 
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.ArrowBack, 
+                                            contentDescription = "Back"
+                                        )
+                                    }
                                 }
                             },
                             actions = {
-                                IconButton(onClick = { ThemeManager.setDarkMode(!currentDark) }) {
-                                    Icon(
-                                        if (currentDark) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                        contentDescription = "Toggle Dark Mode"
-                                    )
+                                if (currentScreen == "dashboard") {
+                                    IconButton(onClick = { ThemeManager.setDarkMode(!currentDark) }) {
+                                        Icon(
+                                            if (currentDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                            contentDescription = "Toggle Dark Mode"
+                                        )
+                                    }
+                                    IconButton(onClick = {
+                                        startActivity(Intent(this@MainActivity, ProfileActivity::class.java))
+                                    }) {
+                                        AsyncImage(
+                                            model = if (profile.photoUrl.isNotEmpty()) profile.photoUrl else user?.photoUrl,
+                                            contentDescription = "Profile",
+                                            modifier = Modifier.size(32.dp).clip(CircleShape),
+                                            contentScale = ContentScale.Crop,
+                                            error = painterResource(id = android.R.drawable.ic_menu_report_image)
+                                        )
+                                    }
                                 }
-                                IconButton(onClick = {
-                                    startActivity(Intent(this@MainActivity, ProfileActivity::class.java))
-                                }) {
-                                    AsyncImage(
-                                        model = user?.photoUrl,
-                                        contentDescription = "Profile",
-                                        modifier = Modifier.size(32.dp).clip(CircleShape),
-                                        contentScale = ContentScale.Crop,
-                                        error = painterResource(id = android.R.drawable.ic_menu_report_image)
-                                    )
-                                }
-                            },
-                            colors = TopAppBarDefaults.largeTopAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.background,
-                                titleContentColor = MaterialTheme.colorScheme.onBackground
-                            )
+                            }
                         )
                     }
                 ) { innerPadding ->
-                    DashboardScreen(
-                        announcement = announcement,
-                        isGroupEnabled = groupCreationEnabled,
-                        onOpenAdmin = {
-                            startActivity(Intent(this@MainActivity, AdminPanelActivity::class.java))
-                        },
-                        onBrowseGroups = {
-                            startActivity(Intent(this@MainActivity, GroupListActivity::class.java))
-                        },
-                        onCreateGroup = {
-                            startActivity(Intent(this@MainActivity, CreateGroupActivity::class.java))
-                        },
-                        onLogout = {
-                            FirebaseAuth.getInstance().signOut()
-                            val intent = Intent(this@MainActivity, LoginActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            startActivity(intent)
-                        },
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    Box(modifier = Modifier.padding(innerPadding)) {
+                        when (currentScreen) {
+                            "dashboard" -> DashboardScreen(
+                                announcement = announcement,
+                                isGroupEnabled = groupCreationEnabled,
+                                isAdmin = profile.isAdmin,
+                                onOpenAdmin = {
+                                    startActivity(Intent(this@MainActivity, AdminPanelActivity::class.java))
+                                },
+                                onBrowseGroups = { currentScreen = "group_list" },
+                                onCreateGroup = { currentScreen = "create_group" },
+                                onLogout = { logout() }
+                            )
+                            "group_list" -> GroupListActivity(
+                                onGroupClick = { group -> 
+                                    selectedGroup = group
+                                    currentScreen = "group_details"
+                                }
+                            )
+                            "create_group" -> CreateGroupActivity(
+                                onGroupCreated = { currentScreen = "group_list" }
+                            )
+                            "group_details" -> selectedGroup?.let { group ->
+                                GroupDetailsActivity(
+                                    group = group,
+                                    onBack = { currentScreen = "group_list" }
+                                )
+                            }
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    private fun logout() {
+        FirebaseAuth.getInstance().signOut()
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        
+        GoogleSignIn.getClient(this, gso).signOut().addOnCompleteListener {
+            val intent = Intent(this, LoginActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            finish()
         }
     }
 
@@ -179,6 +227,7 @@ class MainActivity : ComponentActivity() {
 fun DashboardScreen(
     announcement: String,
     isGroupEnabled: Boolean,
+    isAdmin: Boolean,
     onOpenAdmin: () -> Unit,
     onBrowseGroups: () -> Unit,
     onCreateGroup: () -> Unit,
@@ -220,11 +269,7 @@ fun DashboardScreen(
         }
 
         item {
-            Text(
-                "Quick Actions",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Text("Quick Actions", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
 
         item {
@@ -247,34 +292,32 @@ fun DashboardScreen(
             }
         }
 
-        item {
-            Text(
-                "Management",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        if (isAdmin) {
+            item {
+                Text("Management", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            }
 
-        item {
-            ListItem(
-                headlineContent = { Text("Admin Controls", fontWeight = FontWeight.Bold) },
-                supportingContent = { Text("Biometric protected system settings") },
-                leadingContent = {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondary,
-                        shape = CircleShape,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Color.White)
+            item {
+                ListItem(
+                    headlineContent = { Text("Admin Controls", fontWeight = FontWeight.Bold) },
+                    supportingContent = { Text("Biometric protected system settings") },
+                    leadingContent = {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondary,
+                            shape = CircleShape,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Color.White)
+                            }
                         }
-                    }
-                },
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                    .clickable { onOpenAdmin() }
-            )
+                    },
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        .clickable { onOpenAdmin() }
+                )
+            }
         }
 
         item {
@@ -308,7 +351,7 @@ fun ActionCard(
         modifier = modifier.height(120.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (enabled) containerColor else Color.LightGray.copy(alpha = 0.3f)
+            containerColor = if (enabled) containerColor else Color.Gray.copy(alpha = 0.5f)
         )
     ) {
         Column(
@@ -316,8 +359,8 @@ fun ActionCard(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
-            Spacer(modifier = Modifier.height(8.dp))
+            Icon(icon, contentDescription = null, tint = if (enabled) MaterialTheme.colorScheme.onSecondaryContainer else Color.DarkGray)
+            Spacer(Modifier.height(8.dp))
             Text(title, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
     }

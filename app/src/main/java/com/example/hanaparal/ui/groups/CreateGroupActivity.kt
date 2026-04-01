@@ -31,13 +31,16 @@ fun CreateGroupActivity(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center
+            .padding(24.dp)
     ) {
+        // Removed Arrangement.Center and added a small spacer at the top
+        // to move the content closer to the "Hello, Name" header in MainActivity
+        Spacer(modifier = Modifier.height(8.dp))
+
         Text(
             text = "Create Study Group",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 24.dp)
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 20.dp)
         )
 
         OutlinedTextField(
@@ -79,7 +82,7 @@ fun CreateGroupActivity(
                         viewModel.clearMessages()
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
                 Text("Create Group")
             }

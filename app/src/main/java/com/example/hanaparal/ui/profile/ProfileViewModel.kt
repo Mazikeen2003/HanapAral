@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -12,7 +13,8 @@ data class UserProfile(
     val email: String = "",
     val course: String = "",
     val year: String = "",
-    val photoUrl: String = ""
+    val photoUrl: String = "",
+    val isAdmin: Boolean = false // Added isAdmin field
 )
 
 class ProfileViewModel : ViewModel() {
@@ -31,10 +33,10 @@ class ProfileViewModel : ViewModel() {
     }
 
     private fun startProfileListener() {
-        val uid = auth.currentUser?.uid ?: return
+        val user = auth.currentUser ?: return
+        val uid = user.uid
         _isLoading.value = true
         
-        // Use a snapshot listener so changes reflect immediately across the app
         profileListener = db.collection("users").document(uid)
             .addSnapshotListener { snapshot, error ->
                 _isLoading.value = false
@@ -42,26 +44,44 @@ class ProfileViewModel : ViewModel() {
                 
                 if (snapshot != null && snapshot.exists()) {
                     _profile.value = UserProfile(
-                        name = snapshot.getString("name") ?: "",
-                        email = snapshot.getString("email") ?: "",
+                        name = snapshot.getString("name") ?: user.displayName ?: "",
+                        email = snapshot.getString("email") ?: user.email ?: "",
                         course = snapshot.getString("course") ?: "",
                         year = snapshot.getString("year") ?: "",
-                        photoUrl = snapshot.getString("photoUrl") ?: ""
+                        photoUrl = snapshot.getString("photoUrl") ?: user.photoUrl?.toString() ?: "",
+                        isAdmin = snapshot.getBoolean("isAdmin") ?: snapshot.getBoolean("isSuperuser") ?: false
+                    )
+                } else {
+                    // Document doesn't exist yet, use Firebase Auth data as fallback
+                    _profile.value = UserProfile(
+                        name = user.displayName ?: "",
+                        email = user.email ?: "",
+                        photoUrl = user.photoUrl?.toString() ?: "",
+                        isAdmin = false
                     )
                 }
             }
     }
 
     fun updateProfile(name: String, course: String, year: String, onComplete: (Boolean) -> Unit) {
-        val uid = auth.currentUser?.uid ?: return
+        val user = auth.currentUser ?: return
+        val uid = user.uid
         _isLoading.value = true
-        val updates = mapOf(
+
+        val updates = mutableMapOf(
             "name" to name,
             "course" to course,
-            "year" to year
+            "year" to year,
+            "email" to (user.email ?: "")
         )
-        // Updating Firestore will trigger the SnapshotListener automatically
-        db.collection("users").document(uid).update(updates)
+        
+        // Include photoUrl if it's available in Auth but not in Firestore yet
+        if (user.photoUrl != null) {
+            updates["photoUrl"] = user.photoUrl.toString()
+        }
+
+        // Use SetOptions.merge() so it creates the document if it doesn't exist
+        db.collection("users").document(uid).set(updates, SetOptions.merge())
             .addOnSuccessListener {
                 onComplete(true)
             }
