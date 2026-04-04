@@ -2,12 +2,12 @@ package com.example.hanaparal.data.remote
 
 import com.example.hanaparal.data.model.GroupMember
 import com.example.hanaparal.data.model.StudyGroup
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
@@ -81,11 +81,9 @@ class FirestoreSource {
             .update("fcmToken", token)
     }
 
-    // Admin / Superuser Logic
     fun checkIfSuperuser(uid: String, callback: (Boolean) -> Unit) {
         db.collection("users").document(uid).get()
             .addOnSuccessListener { doc ->
-                // Check both field names to be safe
                 val isSuper = doc.getBoolean("isSuperuser") ?: doc.getBoolean("isAdmin") ?: false
                 callback(isSuper)
             }
@@ -101,14 +99,17 @@ class FirestoreSource {
     }
 
     fun updateUserRole(uid: String, isSuperuser: Boolean, callback: (Boolean) -> Unit) {
-        // Update both fields for consistency
         val updates = mapOf("isSuperuser" to isSuperuser, "isAdmin" to isSuperuser)
         db.collection("users").document(uid).update(updates)
             .addOnCompleteListener { callback(it.isSuccessful) }
     }
 
     fun sendBroadcast(title: String, message: String, callback: (Boolean) -> Unit) {
-        val broadcast = hashMapOf("title" to title, "body" to message, "timestamp" to System.currentTimeMillis())
+        val broadcast = hashMapOf(
+            "title" to title, 
+            "body" to message, 
+            "timestamp" to Timestamp.now()
+        )
         db.collection("broadcasts").add(broadcast)
             .addOnCompleteListener { callback(it.isSuccessful) }
     }
@@ -127,17 +128,27 @@ class FirestoreSource {
         awaitClose { listener.remove() }
     }
 
-    fun observeGlobalSettings(): Flow<Map<String, Any>> {
-        val settingsFlow = MutableStateFlow<Map<String, Any>>(emptyMap())
-        db.collection("settings").document("global_config")
-            .addSnapshotListener { snapshot, _ ->
-                snapshot?.data?.let { settingsFlow.value = it }
+    // IMPROVED: Direct fetch for Repository checks
+    suspend fun getGlobalSettingsOnce(): Map<String, Any> {
+        return try {
+            val doc = db.collection("settings").document("global_config").get().await()
+            doc.data ?: emptyMap()
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    // IMPROVED: Real-time listener using callbackFlow
+    fun observeGlobalSettings(): Flow<Map<String, Any>> = callbackFlow {
+        val listener = db.collection("settings").document("global_config")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                snapshot?.data?.let { trySend(it) }
             }
-        return settingsFlow
+        awaitClose { listener.remove() }
     }
 
     fun updateGlobalSetting(key: String, value: Any, callback: (Boolean) -> Unit) {
-        // Use set with merge to ensure document is created if it doesn't exist
         db.collection("settings").document("global_config")
             .set(mapOf(key to value), SetOptions.merge())
             .addOnCompleteListener { callback(it.isSuccessful) }

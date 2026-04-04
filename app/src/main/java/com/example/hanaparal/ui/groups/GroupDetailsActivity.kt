@@ -102,7 +102,8 @@ fun GroupDetailsActivity(
         val isFull = members.size >= group.maxMembers
 
         Button(
-            onClick = { viewModel.joinGroup(group.groupId, group.maxMembers) },
+            // ALIGNED: Only groupId is passed to the ViewModel
+            onClick = { viewModel.joinGroup(group.groupId) },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
             enabled = !isAlreadyMember && !isFull && !loading

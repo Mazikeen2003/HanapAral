@@ -7,33 +7,35 @@ import com.google.firebase.messaging.RemoteMessage
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
-    private lateinit var notificationHelper: NotificationHelper
-
-    override fun onCreate() {
-        super.onCreate()
-        notificationHelper = NotificationHelper(applicationContext)
-    }
-
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
         
         Log.d("FCM", "From: ${remoteMessage.from}")
 
-        // Check if message contains a notification payload.
+        // 1. Handle Notification Payload (Para sa Firebase Console messages)
         remoteMessage.notification?.let {
-            Log.d("FCM", "Message Notification Body: ${it.body}")
-            val channelId = remoteMessage.data["channel_id"] ?: NotificationHelper.CHANNEL_GROUP_UPDATES
-            notificationHelper.showNotification(
-                channelId,
-                it.title ?: "HanapAral Update",
-                it.body ?: ""
-            )
+            showNotification(it.title ?: "HanapAral", it.body ?: "")
         }
+
+        // 2. Handle Data Payload (Para sa custom logic)
+        if (remoteMessage.data.isNotEmpty()) {
+            val title = remoteMessage.data["title"] ?: "HanapAral Update"
+            val body = remoteMessage.data["body"] ?: ""
+            showNotification(title, body)
+        }
+    }
+
+    private fun showNotification(title: String, body: String) {
+        val notificationHelper = NotificationHelper(applicationContext)
+        notificationHelper.showNotification(
+            NotificationHelper.CHANNEL_ADMIN_NOTICES,
+            title,
+            body
+        )
     }
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d("FCM", "Refreshed token: $token")
-        // TODO: Store token in Firestore if user is logged in
+        Log.d("FCM", "New token: $token")
     }
 }

@@ -13,11 +13,18 @@ class GroupRepository(
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
 
-    suspend fun createGroup(title: String, subject: String, maxMembers: Int): Result<Unit> {
+    suspend fun createGroup(title: String, subject: String, maxMembers: Long): Result<Unit> {
         return try {
             val user = auth.currentUser ?: return Result.failure(Exception("Not logged in"))
             
-            // 1. Generate a new document reference to get a unique ID
+            // SECURITY CHECK: Direct fetch from Firestore to ensure we have the LATEST toggle state
+            val settings = firestoreSource.getGlobalSettingsOnce()
+            val isEnabled = settings["group_creation_enabled"] as? Boolean ?: true
+            
+            if (!isEnabled) {
+                return Result.failure(Exception("Creation Disabled: The administrator has temporarily disabled group creation."))
+            }
+
             val groupRef = db.collection("groups").document()
             val groupId = groupRef.id
 
@@ -31,10 +38,8 @@ class GroupRepository(
                 createdAt = Timestamp.now()
             )
 
-            // 2. Write the main group document first
             firestoreSource.createGroup(group)
 
-            // 3. Then add the creator as the first member (admin)
             val adminMember = GroupMember(
                 uid = user.uid,
                 name = user.displayName ?: "Unknown",
@@ -60,15 +65,20 @@ class GroupRepository(
         }
     }
 
-    suspend fun joinGroup(groupId: String, maxMembers: Int): Result<Unit> {
+    suspend fun joinGroup(groupId: String): Result<Unit> {
         return try {
             val user = auth.currentUser ?: return Result.failure(Exception("Not logged in"))
+
+            val group = firestoreSource.getGroupById(groupId) 
+                ?: return Result.failure(Exception("Group not found"))
 
             val alreadyJoined = firestoreSource.isMemberAlreadyJoined(groupId, user.uid)
             if (alreadyJoined) return Result.failure(Exception("You have already joined this group."))
 
             val currentCount = firestoreSource.getMemberCount(groupId)
-            if (currentCount >= maxMembers) return Result.failure(Exception("Group is already full."))
+            if (currentCount >= group.maxMembers) {
+                return Result.failure(Exception("Group is already full."))
+            }
 
             val member = GroupMember(
                 uid = user.uid,
@@ -80,15 +90,6 @@ class GroupRepository(
             firestoreSource.addMember(groupId, member)
 
             Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun getGroupDetails(groupId: String): Result<StudyGroup?> {
-        return try {
-            val group = firestoreSource.getGroupById(groupId)
-            Result.success(group)
         } catch (e: Exception) {
             Result.failure(e)
         }

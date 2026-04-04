@@ -53,14 +53,15 @@ import com.example.hanaparal.ui.theme.ThemeManager
 import com.example.hanaparal.utils.NotificationHelper
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
 
-    private val remoteConfigSource = RemoteConfigSource()
     private val firestoreSource = FirestoreSource()
     private val fcmSource = FcmSource(firestoreSource)
     private lateinit var notificationHelper: NotificationHelper
+    private var lastNotifiedTime: Long = System.currentTimeMillis()
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -78,6 +79,7 @@ class MainActivity : ComponentActivity() {
         notificationHelper = NotificationHelper(this)
         askNotificationPermission()
         fcmSource.fetchAndStoreToken()
+        fcmSource.subscribeToTopic("announcements")
 
         setContent {
             val userDarkMode by ThemeManager.isDarkMode.collectAsState()
@@ -90,14 +92,14 @@ class MainActivity : ComponentActivity() {
                 
                 var announcement by remember { mutableStateOf("Welcome to HanapAral Hub") }
                 var groupCreationEnabled by remember { mutableStateOf(true) }
-                var maxMembers by remember { mutableStateOf(10) }
+                var maxMembers by remember { mutableStateOf(10L) } // GAWING LONG
                 val user = FirebaseAuth.getInstance().currentUser
 
-                // Navigation State
                 var currentScreen by remember { mutableStateOf("dashboard") }
                 var selectedGroup by remember { mutableStateOf<StudyGroup?>(null) }
 
                 LaunchedEffect(Unit) {
+                    val remoteConfigSource = RemoteConfigSource()
                     remoteConfigSource.fetchAndActivate {
                         announcement = remoteConfigSource.getAnnouncementHeader()
                         groupCreationEnabled = remoteConfigSource.isGroupCreationEnabled()
@@ -105,8 +107,25 @@ class MainActivity : ComponentActivity() {
                     
                     firestoreSource.observeGlobalSettings().collect { settings ->
                         (settings["group_creation_enabled"] as? Boolean)?.let { groupCreationEnabled = it }
-                        (settings["max_members_per_group"] as? Long)?.let { maxMembers = it.toInt() }
+                        (settings["max_members_per_group"] as? Long)?.let { maxMembers = it }
                         (settings["announcement_header"] as? String)?.let { announcement = it }
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    firestoreSource.observeLatestBroadcast().collect { broadcast ->
+                        val title = broadcast["title"] as? String ?: ""
+                        val body = broadcast["body"] as? String ?: ""
+                        val timestamp = (broadcast["timestamp"] as? Timestamp)?.toDate()?.time ?: 0L
+                        
+                        if (title.isNotEmpty() && body.isNotEmpty() && timestamp > lastNotifiedTime) {
+                            lastNotifiedTime = timestamp
+                            notificationHelper.showNotification(
+                                NotificationHelper.CHANNEL_ADMIN_NOTICES,
+                                title,
+                                body
+                            )
+                        }
                     }
                 }
 
@@ -182,6 +201,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                             "create_group" -> CreateGroupActivity(
+                                maxMembers = maxMembers, // IPASA ANG DYNAMIC LIMIT DITO
                                 onGroupCreated = { currentScreen = "group_list" }
                             )
                             "group_details" -> selectedGroup?.let { group ->

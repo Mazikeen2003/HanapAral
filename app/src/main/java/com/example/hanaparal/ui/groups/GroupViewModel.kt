@@ -38,7 +38,7 @@ class GroupViewModel(
         }
     }
 
-    fun createGroup(title: String, subject: String, maxMembers: Int) {
+    fun createGroup(title: String, subject: String, maxMembers: Long) {
         viewModelScope.launch {
             _loading.value = true
             val result = repository.createGroup(title, subject, maxMembers)
@@ -48,10 +48,10 @@ class GroupViewModel(
         }
     }
 
-    fun joinGroup(groupId: String, maxMembers: Int) {
+    fun joinGroup(groupId: String) {
         viewModelScope.launch {
             _loading.value = true
-            val result = repository.joinGroup(groupId, maxMembers)
+            val result = repository.joinGroup(groupId)
             _loading.value = false
             result.onSuccess { _success.value = "Joined group successfully!" }
             result.onFailure { _error.value = it.message }

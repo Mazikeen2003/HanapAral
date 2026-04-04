@@ -1,10 +1,12 @@
 package com.example.hanaparal.ui.profile
 
 import androidx.lifecycle.ViewModel
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -14,7 +16,10 @@ data class UserProfile(
     val course: String = "",
     val year: String = "",
     val photoUrl: String = "",
-    val isAdmin: Boolean = false // Added isAdmin field
+    val isAdmin: Boolean = false,
+    val fcmToken: String = "",
+    val uid: String = "",
+    val lastLogin: Timestamp? = null
 )
 
 class ProfileViewModel : ViewModel() {
@@ -49,15 +54,17 @@ class ProfileViewModel : ViewModel() {
                         course = snapshot.getString("course") ?: "",
                         year = snapshot.getString("year") ?: "",
                         photoUrl = snapshot.getString("photoUrl") ?: user.photoUrl?.toString() ?: "",
-                        isAdmin = snapshot.getBoolean("isAdmin") ?: snapshot.getBoolean("isSuperuser") ?: false
+                        isAdmin = snapshot.getBoolean("isSuperuser") ?: snapshot.getBoolean("isAdmin") ?: false,
+                        fcmToken = snapshot.getString("fcmToken") ?: "",
+                        uid = snapshot.getString("uid") ?: uid,
+                        lastLogin = snapshot.getTimestamp("lastLogin")
                     )
                 } else {
-                    // Document doesn't exist yet, use Firebase Auth data as fallback
                     _profile.value = UserProfile(
                         name = user.displayName ?: "",
                         email = user.email ?: "",
                         photoUrl = user.photoUrl?.toString() ?: "",
-                        isAdmin = false
+                        uid = uid
                     )
                 }
             }
@@ -68,27 +75,33 @@ class ProfileViewModel : ViewModel() {
         val uid = user.uid
         _isLoading.value = true
 
-        val updates = mutableMapOf(
-            "name" to name,
-            "course" to course,
-            "year" to year,
-            "email" to (user.email ?: "")
-        )
-        
-        // Include photoUrl if it's available in Auth but not in Firestore yet
-        if (user.photoUrl != null) {
-            updates["photoUrl"] = user.photoUrl.toString()
-        }
+        // Kunin muna ang FCM Token para masama sa save
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            val token = if (task.isSuccessful) task.result else ""
+            
+            val updates = mutableMapOf(
+                "name" to name,
+                "course" to course,
+                "year" to year,
+                "email" to (user.email ?: ""),
+                "uid" to uid,
+                "fcmToken" to token,
+                "lastLogin" to Timestamp.now()
+            )
+            
+            if (user.photoUrl != null) {
+                updates["photoUrl"] = user.photoUrl.toString()
+            }
 
-        // Use SetOptions.merge() so it creates the document if it doesn't exist
-        db.collection("users").document(uid).set(updates, SetOptions.merge())
-            .addOnSuccessListener {
-                onComplete(true)
-            }
-            .addOnFailureListener {
-                _isLoading.value = false
-                onComplete(false)
-            }
+            db.collection("users").document(uid).set(updates, SetOptions.merge())
+                .addOnSuccessListener {
+                    onComplete(true)
+                }
+                .addOnFailureListener {
+                    _isLoading.value = false
+                    onComplete(false)
+                }
+        }
     }
 
     override fun onCleared() {

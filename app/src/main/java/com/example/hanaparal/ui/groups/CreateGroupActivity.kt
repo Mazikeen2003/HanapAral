@@ -1,16 +1,19 @@
 package com.example.hanaparal.ui.groups
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hanaparal.data.remote.FirestoreSource
 
 @Composable
 fun CreateGroupActivity(
-    maxMembers: Int = 10,
+    maxMembers: Long = 10L, // Aligned to Long to match Firestore numeric type
     onGroupCreated: () -> Unit,
     viewModel: GroupViewModel = viewModel()
 ) {
@@ -33,13 +36,13 @@ fun CreateGroupActivity(
             .fillMaxSize()
             .padding(24.dp)
     ) {
-        // Removed Arrangement.Center and added a small spacer at the top
-        // to move the content closer to the "Hello, Name" header in MainActivity
+        // Reduced top spacer to keep it near "Hello, Name" as requested previously
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = "Create Study Group",
             style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 20.dp)
         )
 
@@ -50,7 +53,8 @@ fun CreateGroupActivity(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
-            singleLine = true
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp)
         )
 
         OutlinedTextField(
@@ -60,7 +64,16 @@ fun CreateGroupActivity(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 24.dp),
-            singleLine = true
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        // Ipakita ang limit na galing sa Admin Panel
+        Text(
+            text = "Group Member Limit: $maxMembers",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 16.dp)
         )
 
         error?.let {
@@ -77,14 +90,14 @@ fun CreateGroupActivity(
             Button(
                 onClick = {
                     if (title.isNotBlank() && subject.isNotBlank()) {
+                        // Ipinapasa na dito ang tamang limit (hal. 5)
                         viewModel.createGroup(title, subject, maxMembers)
-                    } else {
-                        viewModel.clearMessages()
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp)
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text("Create Group")
+                Text("Create Group", fontWeight = FontWeight.Bold)
             }
         }
     }
